@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RickBot Web</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #1c1c1c; color: #fff; }
+    .chat-box { max-height: 60vh; overflow-y: auto; background: #2b2b2b; padding: 15px; border-radius: 10px; }
+    .user-msg { color: #0dcaf0; margin-bottom: 8px; }
+    .bot-msg { color: #f5c542; margin-bottom: 8px; display: flex; align-items: center; }
+    .speaker-btn { cursor: pointer; margin-left: 10px; font-size: 1.2rem; }
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <h1 class="text-center mb-4">🧪 RickBot</h1>
+    <div class="chat-box mb-3" id="chat-box"></div>
+    <div class="input-group">
+      <input type="text" id="user-input" class="form-control" placeholder="Talk to RickBot...">
+      <button class="btn btn-warning" onclick="sendMessage()">Send</button>
+      <button class="btn btn-info" onclick="speakLast()" title="Speak last reply">🔊</button>
+    </div>
+  </div>
+
+  <script>
+    let lastReply = "";  // Store last RickBot response
+
+    function addMessage(sender, text) {
+      const chatBox = document.getElementById("chat-box");
+      const msgDiv = document.createElement("div");
+      if(sender === "You") {
+        msgDiv.className = "user-msg";
+        msgDiv.textContent = `${sender}: ${text}`;
+      } else {
+        msgDiv.className = "bot-msg";
+        msgDiv.innerHTML = `${sender}: ${text} <span class="speaker-btn" onclick="speak('${text}')">🔊</span>`;
+      }
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("user-input");
+      const message = input.value.trim();
+      if (!message) return;
+
+      addMessage("You", message);
+      input.value = "";
+
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await response.json();
+      if (data.reply) {
+        lastReply = data.reply;
+        addMessage("RickBot", data.reply);
+      } else if (data.error) {
+        addMessage("RickBot", "Error: " + data.error);
+      }
+    }
+
+    function speak(text) {
+      const speech = new SpeechSynthesisUtterance(text);
+      speech.lang = "en-US";
+      speech.pitch = 0.7;
+      speech.rate = 1;
+      window.speechSynthesis.speak(speech);
+    }
+
+    function speakLast() {
+      if(lastReply) speak(lastReply);
+    }
+
+    // Optional: press Enter to send
+    document.getElementById("user-input").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>
